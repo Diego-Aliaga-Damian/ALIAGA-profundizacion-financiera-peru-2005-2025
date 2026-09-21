@@ -1,244 +1,522 @@
 # Diego Sebastian Aliaga Damián
 # Código de matrícula: e_2024200481m
 # Tema N.° 1: Profundización financiera y crecimiento económico en el Perú, 2005-2025
-# Fecha de extracción: 19/09/2026
+# Fecha de extracción: 20/09/2026
 
-import csv
 from pathlib import Path
-import statistics
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
-from statsmodels.stats.diagnostic import acorr_breusch_godfrey
 
-# Definir las rutas del proyecto
+# ----------------------------------------------------------
+# RUTAS DEL PROYECTO
+# ----------------------------------------------------------
+
 CARPETA_PROYECTO = Path(__file__).resolve().parent.parent
 CARPETA_PROCESADOS = CARPETA_PROYECTO / "datos_procesados_ALIAGA"
 CARPETA_SALIDAS = CARPETA_PROYECTO / "salidas_ALIAGA"
 
-# Archivo que será utilizado para el análisis
+CARPETA_SALIDAS.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
 ARCHIVO_DATOS = (
-    CARPETA_PROCESADOS / "datos_procesados_e_2024200481m.csv"
+    CARPETA_PROCESADOS /
+    "datos_procesados_e_2024200481m.csv"
 )
 
 print("Base de datos para el análisis:")
 print(ARCHIVO_DATOS)
 
-# Leer la base de datos procesada
-with open(ARCHIVO_DATOS, "r", encoding="utf-8-sig") as archivo:
-    lector = csv.DictReader(archivo)
-    datos = list(lector)
+# ----------------------------------------------------------
+# LEER BASE TRIMESTRAL PROCESADA
+# ----------------------------------------------------------
 
-print("\n--- VERIFICACIÓN DE LA BASE PARA EL ANÁLISIS ---")
-print("Número de observaciones:", len(datos))
-print("Columnas:", lector.fieldnames)
-print("Primer periodo:", datos[0]["periodo"])
-print("Último periodo:", datos[-1]["periodo"])
-
-# Convertir las variables económicas a valores numéricos
-for fila in datos:
-    fila["crecimiento_pbi"] = float(fila["crecimiento_pbi"])
-    fila["liquidez_pbi"] = float(fila["liquidez_pbi"])
-    fila["credito_mn_pbi"] = float(fila["credito_mn_pbi"])
-    fila["credito_total_pbi"] = float(fila["credito_total_pbi"])
-
-print("\n--- VERIFICACIÓN DE TIPOS DE DATOS ---")
-print("crecimiento_pbi:", type(datos[0]["crecimiento_pbi"]).__name__)
-print("liquidez_pbi:", type(datos[0]["liquidez_pbi"]).__name__)
-print("credito_mn_pbi:", type(datos[0]["credito_mn_pbi"]).__name__)
-print("credito_total_pbi:", type(datos[0]["credito_total_pbi"]).__name__)
-
-# Separar las variables económicas
-crecimiento_pbi = [fila["crecimiento_pbi"] for fila in datos]
-liquidez_pbi = [fila["liquidez_pbi"] for fila in datos]
-credito_mn_pbi = [fila["credito_mn_pbi"] for fila in datos]
-credito_total_pbi = [fila["credito_total_pbi"] for fila in datos]
-
-# Función para calcular estadísticas descriptivas
-def estadisticas_descriptivas(nombre, valores):
-    print(f"\n--- {nombre} ---")
-    print("Media:", round(statistics.mean(valores), 4))
-    print("Mínimo:", round(min(valores), 4))
-    print("Máximo:", round(max(valores), 4))
-    print("Desviación estándar:", round(statistics.stdev(valores), 4))
-
-print("\n========== ESTADÍSTICAS DESCRIPTIVAS ==========")
-
-estadisticas_descriptivas(
-    "Crecimiento del PBI",
-    crecimiento_pbi
+df = pd.read_csv(
+    ARCHIVO_DATOS
 )
 
-estadisticas_descriptivas(
-    "Liquidez / PBI",
-    liquidez_pbi
+print("\n--- VERIFICACIÓN DE LA BASE ---")
+print("Número de observaciones:", len(df))
+print("Número de columnas:", len(df.columns))
+print("Columnas:")
+print(df.columns.tolist())
+
+print(
+    "Primer periodo:",
+    df["periodo_trimestral"].iloc[0]
 )
 
-estadisticas_descriptivas(
-    "Crédito MN / PBI",
-    credito_mn_pbi
+print(
+    "Último periodo:",
+    df["periodo_trimestral"].iloc[-1]
 )
 
-estadisticas_descriptivas(
-    "Crédito total / PBI",
-    credito_total_pbi
+print(
+    "Valores faltantes:",
+    df.isna().sum().sum()
 )
 
-# Crear la carpeta de salidas si no existiera
-CARPETA_SALIDAS.mkdir(parents=True, exist_ok=True)
-
-# Archivo para guardar las estadísticas descriptivas
-ARCHIVO_ESTADISTICAS = (
-    CARPETA_SALIDAS / "estadisticas_descriptivas_ALIAGA.csv"
+print(
+    "Periodos duplicados:",
+    df["periodo_trimestral"].duplicated().sum()
 )
 
-# Preparar los resultados
-resultados_estadisticos = [
-    {
-        "variable": "crecimiento_pbi",
-        "media": statistics.mean(crecimiento_pbi),
-        "minimo": min(crecimiento_pbi),
-        "maximo": max(crecimiento_pbi),
-        "desviacion_estandar": statistics.stdev(crecimiento_pbi)
-    },
-    {
-        "variable": "liquidez_pbi",
-        "media": statistics.mean(liquidez_pbi),
-        "minimo": min(liquidez_pbi),
-        "maximo": max(liquidez_pbi),
-        "desviacion_estandar": statistics.stdev(liquidez_pbi)
-    },
-    {
-        "variable": "credito_mn_pbi",
-        "media": statistics.mean(credito_mn_pbi),
-        "minimo": min(credito_mn_pbi),
-        "maximo": max(credito_mn_pbi),
-        "desviacion_estandar": statistics.stdev(credito_mn_pbi)
-    },
-    {
-        "variable": "credito_total_pbi",
-        "media": statistics.mean(credito_total_pbi),
-        "minimo": min(credito_total_pbi),
-        "maximo": max(credito_total_pbi),
-        "desviacion_estandar": statistics.stdev(credito_total_pbi)
-    }
+# ----------------------------------------------------------
+# ESTADÍSTICAS DESCRIPTIVAS
+# ----------------------------------------------------------
+
+VARIABLES_ANALISIS = [
+    "credito_sector_privado",
+    "pbi_desestacionalizado",
+    "inflacion_ipc",
+    "tipo_cambio",
+    "creditos_sbs_millones",
+    "credito_privado_pct_pbi_bcrp"
 ]
 
-# Guardar las estadísticas descriptivas
-with open(
-    ARCHIVO_ESTADISTICAS,
-    "w",
-    newline="",
-    encoding="utf-8-sig"
-) as archivo:
-    columnas = [
-        "variable",
-        "media",
-        "minimo",
-        "maximo",
-        "desviacion_estandar"
+estadisticas = df[
+    VARIABLES_ANALISIS
+].describe().T
+
+estadisticas = estadisticas[
+    [
+        "count",
+        "mean",
+        "std",
+        "min",
+        "25%",
+        "50%",
+        "75%",
+        "max"
     ]
+]
 
-    escritor = csv.DictWriter(
-        archivo,
-        fieldnames=columnas
-    )
+print("\n--- ESTADÍSTICAS DESCRIPTIVAS ---")
+print(estadisticas.round(4))
 
-    escritor.writeheader()
-    escritor.writerows(resultados_estadisticos)
+ARCHIVO_ESTADISTICAS = (
+    CARPETA_SALIDAS /
+    "estadisticas_descriptivas_ALIAGA.csv"
+)
 
-print("\nEstadísticas descriptivas guardadas en:")
+estadisticas.to_csv(
+    ARCHIVO_ESTADISTICAS,
+    encoding="utf-8-sig"
+)
+
+print("\nEstadísticas guardadas en:")
 print(ARCHIVO_ESTADISTICAS)
 
-# Calcular correlaciones entre crecimiento económico
-# e indicadores de profundización financiera
+# ----------------------------------------------------------
+# CRECIMIENTO DEL PBI (%)
+# ----------------------------------------------------------
 
-correlacion_liquidez = statistics.correlation(
-    crecimiento_pbi,
-    liquidez_pbi
+df["crecimiento_pbi"] = (
+    df["pbi_desestacionalizado"]
+    .pct_change()
+    * 100
 )
 
-correlacion_credito_mn = statistics.correlation(
-    crecimiento_pbi,
-    credito_mn_pbi
-)
-
-correlacion_credito_total = statistics.correlation(
-    crecimiento_pbi,
-    credito_total_pbi
-)
-
-print("\n========== CORRELACIONES ==========")
-
+print("\n--- CRECIMIENTO DEL PBI ---")
 print(
-    "Crecimiento PBI - Liquidez/PBI:",
-    round(correlacion_liquidez, 4)
+    "Valores faltantes:",
+    df["crecimiento_pbi"].isna().sum()
 )
 
 print(
-    "Crecimiento PBI - Crédito MN/PBI:",
-    round(correlacion_credito_mn, 4)
+    "Media:",
+    round(df["crecimiento_pbi"].mean(), 4)
 )
 
 print(
-    "Crecimiento PBI - Crédito total/PBI:",
-    round(correlacion_credito_total, 4)
+    "Mínimo:",
+    round(df["crecimiento_pbi"].min(), 4)
 )
 
-# Guardar las correlaciones
-ARCHIVO_CORRELACIONES = (
-    CARPETA_SALIDAS / "correlaciones_ALIAGA.csv"
+print(
+    "Máximo:",
+    round(df["crecimiento_pbi"].max(), 4)
 )
 
-resultados_correlaciones = [
-    {
-        "variable_1": "crecimiento_pbi",
-        "variable_2": "liquidez_pbi",
-        "correlacion": correlacion_liquidez
-    },
-    {
-        "variable_1": "crecimiento_pbi",
-        "variable_2": "credito_mn_pbi",
-        "correlacion": correlacion_credito_mn
-    },
-    {
-        "variable_1": "crecimiento_pbi",
-        "variable_2": "credito_total_pbi",
-        "correlacion": correlacion_credito_total
-    }
-]
+# Crear base sin la primera observación
+df_modelo = df.dropna().copy()
 
-with open(
-    ARCHIVO_CORRELACIONES,
-    "w",
-    newline="",
-    encoding="utf-8-sig"
-) as archivo:
+print("\n--- BASE PARA EL MODELO ---")
+print("Observaciones:", len(df_modelo))
+print(
+    "Valores faltantes:",
+    df_modelo.isna().sum().sum()
+)
 
-    columnas_correlacion = [
-        "variable_1",
-        "variable_2",
-        "correlacion"
-    ]
+# ----------------------------------------------------------
+# PRUEBAS DE ESTACIONARIEDAD - ADF
+# ----------------------------------------------------------
 
-    escritor = csv.DictWriter(
-        archivo,
-        fieldnames=columnas_correlacion
+from statsmodels.tsa.stattools import adfuller
+
+
+def prueba_adf(serie, nombre):
+    resultado = adfuller(
+        serie.dropna(),
+        autolag="AIC"
     )
 
-    escritor.writeheader()
-    escritor.writerows(resultados_correlaciones)
+    print(f"\n--- ADF: {nombre} ---")
+    print("Estadístico ADF:", round(resultado[0], 4))
+    print("p-valor:", round(resultado[1], 4))
+    print("Rezagos utilizados:", resultado[2])
 
-print("\nCorrelaciones guardadas en:")
-print(ARCHIVO_CORRELACIONES)
+    if resultado[1] < 0.05:
+        print("Resultado: serie estacionaria")
+    else:
+        print("Resultado: serie no estacionaria")
 
-# Crear gráfico de evolución del crecimiento del PBI
-periodos = [fila["periodo"] for fila in datos]
 
-plt.figure(figsize=(12, 6))
+prueba_adf(
+    df["credito_privado_pct_pbi_bcrp"],
+    "Crédito privado / PBI"
+)
+
+prueba_adf(
+    df["pbi_desestacionalizado"],
+    "PBI desestacionalizado"
+)
+
+prueba_adf(
+    df["inflacion_ipc"],
+    "Inflación"
+)
+
+prueba_adf(
+    df["tipo_cambio"],
+    "Tipo de cambio"
+)
+
+# ----------------------------------------------------------
+# PRUEBAS ADF EN PRIMERAS DIFERENCIAS
+# ----------------------------------------------------------
+
+print("\n========== ADF EN PRIMERAS DIFERENCIAS ==========")
+
+prueba_adf(
+    df["credito_privado_pct_pbi_bcrp"].diff(),
+    "Δ Crédito privado / PBI"
+)
+
+prueba_adf(
+    df["pbi_desestacionalizado"].diff(),
+    "Δ PBI desestacionalizado"
+)
+
+prueba_adf(
+    df["tipo_cambio"].diff(),
+    "Δ Tipo de cambio"
+)
+
+# ----------------------------------------------------------
+# PRUEBA DE COINTEGRACIÓN DE ENGLE-GRANGER
+# ----------------------------------------------------------
+
+from statsmodels.tsa.stattools import coint
+
+credito_pbi = df_modelo[
+    "credito_privado_pct_pbi_bcrp"
+]
+
+pbi = df_modelo[
+    "pbi_desestacionalizado"
+]
+
+resultado_coint = coint(
+    pbi,
+    credito_pbi
+)
+
+estadistico_coint = resultado_coint[0]
+p_valor_coint = resultado_coint[1]
+
+print("\n========== COINTEGRACIÓN ENGLE-GRANGER ==========")
+
+print(
+    "Estadístico:",
+    round(estadistico_coint, 4)
+)
+
+print(
+    "p-valor:",
+    round(p_valor_coint, 4)
+)
+
+if p_valor_coint < 0.05:
+    print(
+        "Resultado: existe evidencia de "
+        "cointegración entre Crédito/PBI y PBI."
+    )
+else:
+    print(
+        "Resultado: no existe evidencia suficiente de "
+        "cointegración entre Crédito/PBI y PBI."
+    )
+
+# ----------------------------------------------------------
+# PRUEBA DE COINTEGRACIÓN DE JOHANSEN
+# ----------------------------------------------------------
+
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
+
+datos_johansen = df_modelo[
+    [
+        "pbi_desestacionalizado",
+        "credito_privado_pct_pbi_bcrp"
+    ]
+].dropna()
+
+resultado_johansen = coint_johansen(
+    datos_johansen,
+    det_order=0,
+    k_ar_diff=1
+)
+
+print("\n========== COINTEGRACIÓN DE JOHANSEN ==========")
+
+print(
+    "Estadístico de traza r=0:",
+    round(resultado_johansen.lr1[0], 4)
+)
+
+print(
+    "Valor crítico 5% r=0:",
+    round(resultado_johansen.cvt[0, 1], 4)
+)
+
+print(
+    "Estadístico de traza r<=1:",
+    round(resultado_johansen.lr1[1], 4)
+)
+
+print(
+    "Valor crítico 5% r<=1:",
+    round(resultado_johansen.cvt[1, 1], 4)
+)
+
+if resultado_johansen.lr1[0] > resultado_johansen.cvt[0, 1]:
+    print(
+        "Resultado: existe evidencia de al menos "
+        "una relación de cointegración."
+    )
+else:
+    print(
+        "Resultado: no existe evidencia de "
+        "cointegración al 5%."
+    )
+
+    # ----------------------------------------------------------
+# MODELO EN PRIMERAS DIFERENCIAS
+# ----------------------------------------------------------
+
+df_modelo["d_credito_pbi"] = (
+    df_modelo["credito_privado_pct_pbi_bcrp"].diff()
+)
+
+df_modelo["d_pbi"] = (
+    df_modelo["pbi_desestacionalizado"].diff()
+)
+
+df_modelo["d_tipo_cambio"] = (
+    df_modelo["tipo_cambio"].diff()
+)
+
+modelo_diferencias = df_modelo[
+    [
+        "d_pbi",
+        "d_credito_pbi",
+        "inflacion_ipc",
+        "d_tipo_cambio"
+    ]
+].dropna()
+print("\n========== MODELO EN PRIMERAS DIFERENCIAS ==========")
+print("Observaciones:", len(modelo_diferencias))
+print("Valores faltantes:", modelo_diferencias.isna().sum().sum())
+
+X = modelo_diferencias[
+    [
+        "d_credito_pbi",
+        "inflacion_ipc",
+        "d_tipo_cambio"
+    ]
+]
+
+X = sm.add_constant(X)
+
+y = modelo_diferencias["d_pbi"]
+
+modelo_ols = sm.OLS(
+    y,
+    X
+).fit()
+
+print(modelo_ols.summary())
+
+# ----------------------------------------------------------
+# MODELO CON ERRORES ESTÁNDAR ROBUSTOS HAC
+# ----------------------------------------------------------
+
+modelo_hac = modelo_ols.get_robustcov_results(
+    cov_type="HAC",
+    maxlags=4
+)
+
+print(
+    "\n========== MODELO CON ERRORES ROBUSTOS HAC =========="
+)
+
+print(modelo_hac.summary())
+
+# ----------------------------------------------------------
+# ROBUSTEZ: CONTROL POR CHOQUE DE LA PANDEMIA
+# ----------------------------------------------------------
+
+df_modelo["dummy_covid"] = (
+    (df_modelo["anio"] == 2020)
+).astype(int)
+
+modelo_covid = df_modelo[
+    [
+        "d_pbi",
+        "d_credito_pbi",
+        "inflacion_ipc",
+        "d_tipo_cambio",
+        "dummy_covid"
+    ]
+].dropna()
+
+X_covid = modelo_covid[
+    [
+        "d_credito_pbi",
+        "inflacion_ipc",
+        "d_tipo_cambio",
+        "dummy_covid"
+    ]
+]
+
+X_covid = sm.add_constant(X_covid)
+
+y_covid = modelo_covid["d_pbi"]
+
+modelo_covid_hac = sm.OLS(
+    y_covid,
+    X_covid
+).fit(
+    cov_type="HAC",
+    cov_kwds={"maxlags": 4}
+)
+
+print(
+    "\n========== ROBUSTEZ CON DUMMY COVID-19 =========="
+)
+
+print(modelo_covid_hac.summary())
+
+# ----------------------------------------------------------
+# GUARDAR RESULTADOS ECONOMÉTRICOS FINALES
+# ----------------------------------------------------------
+
+resultados_finales = pd.DataFrame({
+    "modelo": [
+        "Primeras diferencias HAC",
+        "Primeras diferencias HAC + COVID"
+    ],
+"coef_credito_pbi": [
+    modelo_hac.params.iloc[1] if hasattr(modelo_hac.params, "iloc") else modelo_hac.params[1],
+    modelo_covid_hac.params.iloc[1]
+],
+"p_valor_credito_pbi": [
+    modelo_hac.pvalues.iloc[1] if hasattr(modelo_hac.pvalues, "iloc") else modelo_hac.pvalues[1],
+    modelo_covid_hac.pvalues.iloc[1]
+],
+    "r_cuadrado": [
+        modelo_hac.rsquared,
+        modelo_covid_hac.rsquared
+    ],
+    "observaciones": [
+        int(modelo_hac.nobs),
+        int(modelo_covid_hac.nobs)
+    ]
+})
+
+ARCHIVO_RESULTADOS = (
+    CARPETA_SALIDAS /
+    "resultados_modelos_ALIAGA.csv"
+)
+
+resultados_finales.to_csv(
+    ARCHIVO_RESULTADOS,
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print("\n========== RESULTADOS FINALES GUARDADOS ==========")
+print(resultados_finales.round(4))
+print("\nArchivo:")
+print(ARCHIVO_RESULTADOS)
+
+# ------------------------------------------------------------
+# GRÁFICO: PROFUNDIZACIÓN FINANCIERA
+# ------------------------------------------------------------
+
+plt.figure(figsize=(10, 6))
 
 plt.plot(
-    periodos,
-    crecimiento_pbi
+    df_modelo["periodo_trimestral"],
+    df_modelo["credito_privado_pct_pbi_bcrp"]
+)
+
+plt.title(
+    "Profundización financiera en el Perú, 2005-2025"
+)
+plt.xlabel("Periodo")
+plt.ylabel("Crédito al sector privado (% del PBI)")
+
+# Mostrar una etiqueta por año
+posiciones = range(0, len(df_modelo), 4)
+
+plt.xticks(
+    posiciones,
+    df_modelo["periodo_trimestral"].iloc[posiciones],
+    rotation=45
+)
+
+plt.grid(alpha=0.3)
+plt.tight_layout()
+
+ARCHIVO_GRAFICO_PROFUNDIZACION = (
+    CARPETA_SALIDAS /
+    "grafico_profundizacion_financiera_ALIAGA.png"
+)
+
+plt.savefig(
+    ARCHIVO_GRAFICO_PROFUNDIZACION,
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
+
+print("\nGráfico de profundización financiera guardado en:")
+print(ARCHIVO_GRAFICO_PROFUNDIZACION)
+
+# ------------------------------------------------------------
+# GRÁFICO: CRECIMIENTO DEL PBI
+# ------------------------------------------------------------
+
+plt.figure(figsize=(10, 6))
+
+plt.plot(
+    df_modelo["periodo_trimestral"],
+    df_modelo["crecimiento_pbi"]
 )
 
 plt.axhline(
@@ -246,26 +524,27 @@ plt.axhline(
     linewidth=1
 )
 
-plt.title("Crecimiento del PBI del Perú, 2005-2025")
+plt.title(
+    "Crecimiento trimestral del PBI del Perú, 2005-2025"
+)
 plt.xlabel("Periodo")
-plt.ylabel("Variación porcentual interanual (%)")
+plt.ylabel("Variación trimestral (%)")
 
-# Mostrar una etiqueta por año para evitar saturación
-posiciones = list(range(0, len(periodos), 4))
-etiquetas = [periodos[i][:4] for i in posiciones]
+# Mostrar una etiqueta por año
+posiciones = range(0, len(df_modelo), 4)
 
 plt.xticks(
     posiciones,
-    etiquetas,
+    df_modelo["periodo_trimestral"].iloc[posiciones],
     rotation=45
 )
 
 plt.grid(alpha=0.3)
 plt.tight_layout()
 
-# Guardar el gráfico
 ARCHIVO_GRAFICO_PBI = (
-    CARPETA_SALIDAS / "grafico_crecimiento_pbi_ALIAGA.png"
+    CARPETA_SALIDAS /
+    "grafico_crecimiento_pbi_ALIAGA.png"
 )
 
 plt.savefig(
@@ -278,357 +557,3 @@ plt.close()
 
 print("\nGráfico de crecimiento del PBI guardado en:")
 print(ARCHIVO_GRAFICO_PBI)
-
-# Crear gráfico de los indicadores de profundización financiera
-plt.figure(figsize=(12, 6))
-
-plt.plot(
-    periodos,
-    liquidez_pbi,
-    label="Liquidez / PBI"
-)
-
-plt.plot(
-    periodos,
-    credito_mn_pbi,
-    label="Crédito MN / PBI"
-)
-
-plt.plot(
-    periodos,
-    credito_total_pbi,
-    label="Crédito total / PBI"
-)
-
-plt.title("Indicadores de profundización financiera en el Perú, 2005-2025")
-plt.xlabel("Periodo")
-plt.ylabel("Porcentaje del PBI (%)")
-
-# Mostrar una etiqueta por año
-plt.xticks(
-    posiciones,
-    etiquetas,
-    rotation=45
-)
-
-plt.legend()
-plt.grid(alpha=0.3)
-plt.tight_layout()
-
-# Guardar el gráfico
-ARCHIVO_GRAFICO_FINANCIERO = (
-    CARPETA_SALIDAS / "grafico_profundizacion_financiera_ALIAGA.png"
-)
-
-plt.savefig(
-    ARCHIVO_GRAFICO_FINANCIERO,
-    dpi=300,
-    bbox_inches="tight"
-)
-
-plt.close()
-
-print("\nGráfico de profundización financiera guardado en:")
-print(ARCHIVO_GRAFICO_FINANCIERO)
-
-# Matriz de correlaciones de las variables económicas
-variables = {
-    "crecimiento_pbi": crecimiento_pbi,
-    "liquidez_pbi": liquidez_pbi,
-    "credito_mn_pbi": credito_mn_pbi,
-    "credito_total_pbi": credito_total_pbi
-}
-
-nombres_variables = list(variables.keys())
-
-print("\n========== MATRIZ DE CORRELACIONES ==========")
-
-for variable_1 in nombres_variables:
-    fila_resultados = []
-
-    for variable_2 in nombres_variables:
-        correlacion = statistics.correlation(
-            variables[variable_1],
-            variables[variable_2]
-        )
-
-        fila_resultados.append(round(correlacion, 4))
-
-    print(variable_1, ":", fila_resultados)
-
-    # ============================================================
-# MODELO 1: CRECIMIENTO DEL PBI Y LIQUIDEZ / PBI
-# ============================================================
-
-# Variable dependiente (Y)
-Y = crecimiento_pbi
-
-# Variable explicativa (X)
-X_liquidez = liquidez_pbi
-
-# Agregar una constante para estimar el intercepto beta_0
-X_liquidez_constante = sm.add_constant(X_liquidez)
-
-# Estimar el modelo mediante Mínimos Cuadrados Ordinarios (MCO)
-modelo_liquidez = sm.OLS(
-    Y,
-    X_liquidez_constante
-).fit()
-
-print("\n========== MODELO 1: LIQUIDEZ / PBI ==========")
-print(modelo_liquidez.summary())
-
-# ============================================================
-# MODELO 2: CRECIMIENTO DEL PBI Y CRÉDITO MN / PBI
-# ============================================================
-
-# Variable explicativa
-X_credito_mn = credito_mn_pbi
-
-# Agregar constante
-X_credito_mn_constante = sm.add_constant(X_credito_mn)
-
-# Estimar mediante Mínimos Cuadrados Ordinarios
-modelo_credito_mn = sm.OLS(
-    Y,
-    X_credito_mn_constante
-).fit()
-
-print("\n========== MODELO 2: CRÉDITO MN / PBI ==========")
-print(modelo_credito_mn.summary())
-
-# ============================================================
-# MODELO 3: CRECIMIENTO DEL PBI Y CRÉDITO TOTAL / PBI
-# ============================================================
-
-# Variable explicativa
-X_credito_total = credito_total_pbi
-
-# Agregar constante
-X_credito_total_constante = sm.add_constant(X_credito_total)
-
-# Estimar mediante Mínimos Cuadrados Ordinarios
-modelo_credito_total = sm.OLS(
-    Y,
-    X_credito_total_constante
-).fit()
-
-print("\n========== MODELO 3: CRÉDITO TOTAL / PBI ==========")
-print(modelo_credito_total.summary())
-
-# ============================================================
-# GUARDAR RESULTADOS DE LOS TRES MODELOS
-# ============================================================
-
-ARCHIVO_MODELOS = (
-    CARPETA_SALIDAS / "resultados_modelos_ALIAGA.csv"
-)
-
-resultados_modelos = [
-    {
-        "modelo": "Liquidez / PBI",
-        "intercepto": modelo_liquidez.params[0],
-        "coeficiente": modelo_liquidez.params[1],
-        "p_valor": modelo_liquidez.pvalues[1],
-        "r_cuadrado": modelo_liquidez.rsquared,
-        "r_cuadrado_ajustado": modelo_liquidez.rsquared_adj,
-        "prob_f": modelo_liquidez.f_pvalue,
-        "durbin_watson": sm.stats.stattools.durbin_watson(
-            modelo_liquidez.resid
-        )
-    },
-    {
-        "modelo": "Crédito MN / PBI",
-        "intercepto": modelo_credito_mn.params[0],
-        "coeficiente": modelo_credito_mn.params[1],
-        "p_valor": modelo_credito_mn.pvalues[1],
-        "r_cuadrado": modelo_credito_mn.rsquared,
-        "r_cuadrado_ajustado": modelo_credito_mn.rsquared_adj,
-        "prob_f": modelo_credito_mn.f_pvalue,
-        "durbin_watson": sm.stats.stattools.durbin_watson(
-            modelo_credito_mn.resid
-        )
-    },
-    {
-        "modelo": "Crédito total / PBI",
-        "intercepto": modelo_credito_total.params[0],
-        "coeficiente": modelo_credito_total.params[1],
-        "p_valor": modelo_credito_total.pvalues[1],
-        "r_cuadrado": modelo_credito_total.rsquared,
-        "r_cuadrado_ajustado": modelo_credito_total.rsquared_adj,
-        "prob_f": modelo_credito_total.f_pvalue,
-        "durbin_watson": sm.stats.stattools.durbin_watson(
-            modelo_credito_total.resid
-        )
-    }
-]
-
-columnas_modelos = [
-    "modelo",
-    "intercepto",
-    "coeficiente",
-    "p_valor",
-    "r_cuadrado",
-    "r_cuadrado_ajustado",
-    "prob_f",
-    "durbin_watson"
-]
-
-with open(
-    ARCHIVO_MODELOS,
-    "w",
-    newline="",
-    encoding="utf-8-sig"
-) as archivo:
-
-    escritor = csv.DictWriter(
-        archivo,
-        fieldnames=columnas_modelos
-    )
-
-    escritor.writeheader()
-    escritor.writerows(resultados_modelos)
-
-print("\nResultados de los modelos guardados en:")
-print(ARCHIVO_MODELOS)
-
-# ============================================================
-# PRUEBA DE AUTOCORRELACIÓN DE BREUSCH-GODFREY
-# ============================================================
-
-# Aplicar la prueba con 4 rezagos por tratarse de datos trimestrales
-bg_liquidez = acorr_breusch_godfrey(
-    modelo_liquidez,
-    nlags=4
-)
-
-bg_credito_mn = acorr_breusch_godfrey(
-    modelo_credito_mn,
-    nlags=4
-)
-
-bg_credito_total = acorr_breusch_godfrey(
-    modelo_credito_total,
-    nlags=4
-)
-
-print("\n========== PRUEBA BREUSCH-GODFREY ==========")
-
-print(
-    "Liquidez/PBI - LM:",
-    round(bg_liquidez[0], 4),
-    "- p-valor:",
-    round(bg_liquidez[1], 4)
-)
-
-print(
-    "Crédito MN/PBI - LM:",
-    round(bg_credito_mn[0], 4),
-    "- p-valor:",
-    round(bg_credito_mn[1], 4)
-)
-
-print(
-    "Crédito total/PBI - LM:",
-    round(bg_credito_total[0], 4),
-    "- p-valor:",
-    round(bg_credito_total[1], 4)
-)
-
-# ============================================================
-# MODELO 1 CON ERRORES ESTÁNDAR HAC / NEWEY-WEST
-# ============================================================
-
-modelo_liquidez_hac = modelo_liquidez.get_robustcov_results(
-    cov_type="HAC",
-    maxlags=4
-)
-
-print("\n========== MODELO 1: LIQUIDEZ/PBI - HAC ==========")
-print(modelo_liquidez_hac.summary())
-
-# ============================================================
-# MODELOS 2 Y 3 CON ERRORES ESTÁNDAR HAC / NEWEY-WEST
-# ============================================================
-
-modelo_credito_mn_hac = modelo_credito_mn.get_robustcov_results(
-    cov_type="HAC",
-    maxlags=4
-)
-
-modelo_credito_total_hac = modelo_credito_total.get_robustcov_results(
-    cov_type="HAC",
-    maxlags=4
-)
-
-print("\n========== MODELO 2: CRÉDITO MN/PBI - HAC ==========")
-print(modelo_credito_mn_hac.summary())
-
-print("\n========== MODELO 3: CRÉDITO TOTAL/PBI - HAC ==========")
-print(modelo_credito_total_hac.summary())
-
-# ============================================================
-# GUARDAR RESULTADOS DE LOS MODELOS CON HAC
-# ============================================================
-
-ARCHIVO_MODELOS_HAC = (
-    CARPETA_SALIDAS / "resultados_modelos_HAC_ALIAGA.csv"
-)
-
-resultados_hac = [
-    {
-        "modelo": "Liquidez / PBI",
-        "coeficiente": modelo_liquidez_hac.params[1],
-        "error_estandar": modelo_liquidez_hac.bse[1],
-        "t": modelo_liquidez_hac.tvalues[1],
-        "p_valor": modelo_liquidez_hac.pvalues[1],
-        "ic_95_inferior": modelo_liquidez_hac.conf_int()[1][0],
-        "ic_95_superior": modelo_liquidez_hac.conf_int()[1][1]
-    },
-    {
-        "modelo": "Crédito MN / PBI",
-        "coeficiente": modelo_credito_mn_hac.params[1],
-        "error_estandar": modelo_credito_mn_hac.bse[1],
-        "t": modelo_credito_mn_hac.tvalues[1],
-        "p_valor": modelo_credito_mn_hac.pvalues[1],
-        "ic_95_inferior": modelo_credito_mn_hac.conf_int()[1][0],
-        "ic_95_superior": modelo_credito_mn_hac.conf_int()[1][1]
-    },
-    {
-        "modelo": "Crédito total / PBI",
-        "coeficiente": modelo_credito_total_hac.params[1],
-        "error_estandar": modelo_credito_total_hac.bse[1],
-        "t": modelo_credito_total_hac.tvalues[1],
-        "p_valor": modelo_credito_total_hac.pvalues[1],
-        "ic_95_inferior": modelo_credito_total_hac.conf_int()[1][0],
-        "ic_95_superior": modelo_credito_total_hac.conf_int()[1][1]
-    }
-]
-
-columnas_hac = [
-    "modelo",
-    "coeficiente",
-    "error_estandar",
-    "t",
-    "p_valor",
-    "ic_95_inferior",
-    "ic_95_superior"
-]
-
-with open(
-    ARCHIVO_MODELOS_HAC,
-    "w",
-    newline="",
-    encoding="utf-8-sig"
-) as archivo:
-
-    escritor = csv.DictWriter(
-        archivo,
-        fieldnames=columnas_hac
-    )
-
-    escritor.writeheader()
-    escritor.writerows(resultados_hac)
-
-print("\nResultados HAC guardados en:")
-print(ARCHIVO_MODELOS_HAC)
