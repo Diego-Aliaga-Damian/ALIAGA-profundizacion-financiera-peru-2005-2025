@@ -53,7 +53,7 @@ Los scripts deben ejecutarse en el siguiente orden:
 2. `codigo ALIAGA/02_scraping_web.py`
 3. `codigo ALIAGA/03_limpieza_datos.py`
 4. `codigo ALIAGA/04_analisis.py`
-
+5. `codigo ALIAGA/05_verificacion_autenticidad.py`
 El primer script realiza la extracción automatizada mediante API de información oficial del BCRP y del Banco Mundial (WDI), almacenando los datos crudos.
 
 El segundo script realiza la descarga programática y extracción de información de los boletines estadísticos oficiales de banca múltiple de la SBS.
@@ -61,6 +61,8 @@ El segundo script realiza la descarga programática y extracción de informació
 El tercer script limpia, transforma, valida e integra las distintas fuentes de información. Además, genera las bases procesadas, el diccionario de variables y el hash SHA-256 de la base final.
 
 El cuarto script realiza el análisis estadístico y econométrico. Incluye estadísticas descriptivas, pruebas de estacionariedad ADF, pruebas de cointegración, modelos en primeras diferencias, errores robustos HAC, prueba de robustez con una variable dummy para COVID-19 y generación de gráficos y resultados.
+
+El quinto script verifica la autenticidad y reproducibilidad de la base procesada. Reconstruye las observaciones trimestrales a partir de los datos crudos, compara los resultados con la base final y genera una muestra de 10 observaciones para su verificación.
 
 ## 5. Archivos principales
 
@@ -87,9 +89,10 @@ Archivos principales:
 - `datos_procesados_ALIAGA/datos_wdi_procesados_e_2024200481m.csv`
 - `datos_procesados_ALIAGA/diccionario_variables_ALIAGA.csv`
 - `datos_procesados_ALIAGA/hash_base_final_ALIAGA.txt`
-
+- `datos_procesados_ALIAGA/comparacion_bcrp_wdi_anual_e_2024200481m.csv`
 La base mensual contiene 252 observaciones correspondientes al período 2005-01 a 2025-12. La base trimestral utilizada en el análisis econométrico contiene 84 observaciones, desde 2005T1 hasta 2025T4.
 
+El archivo de comparación BCRP-WDI contiene 20 observaciones anuales para el período 2005-2024 y permite contrastar los indicadores de crédito al sector privado como porcentaje del PBI provenientes de ambas fuentes oficiales.
 ### Salidas
 
 La carpeta `salidas_ALIAGA` contiene los resultados generados por `04_analisis.py`:
@@ -98,6 +101,10 @@ La carpeta `salidas_ALIAGA` contiene los resultados generados por `04_analisis.p
 - `resultados_modelos_ALIAGA.csv`
 - `grafico_profundizacion_financiera_ALIAGA.png`
 - `grafico_crecimiento_pbi_ALIAGA.png`
+- `muestra_verificacion_autenticidad_ALIAGA.csv`
+- `evidencia_verificacion_autenticidad_ALIAGA.csv`
+
+Los archivos de verificación de autenticidad documentan una muestra de 10 observaciones de la base final y el resultado de su contraste con los datos crudos utilizados en el proyecto.
 ## 6. Reproducibilidad
 
 El proyecto utiliza rutas relativas para permitir su ejecución en otros equipos manteniendo la misma estructura de carpetas.
@@ -120,6 +127,7 @@ Los datos crudos se conservan sin modificaciones y las transformaciones necesari
 
 La integridad de la base procesada final se verifica mediante un hash SHA-256 generado automáticamente.
 
+Adicionalmente, `05_verificacion_autenticidad.py` reconstruye la información trimestral a partir de los datos crudos y la compara con la base procesada final. La verificación realizada sobre las 84 observaciones trimestrales no presenta discrepancias en las variables reconstruidas, y la muestra de 10 observaciones destinada a la comprobación de autenticidad fue verificada satisfactoriamente.
 ## 7. Integridad de la base procesada
 
 La base trimestral final utilizada para el análisis econométrico es:
@@ -130,7 +138,9 @@ La integridad del archivo se verifica mediante SHA-256.
 
 **SHA-256:**
 
-`93747b948d91883c397e4e7cfa5683811fcffe3e4a4a6ccdb2ddda1dcfeb4fc2a`
+**SHA-256:**
+
+`2e18093fab6fb665ca10fad326f9df7b6fa39feb9ed2ec88498cdb6caa2f55e2`
 
 El hash también se encuentra almacenado en:
 
@@ -139,7 +149,7 @@ El hash también se encuentra almacenado en:
 
 El archivo `log_ejecucion.txt` registra información sobre la ejecución del proyecto y permite documentar el proceso de extracción y procesamiento de los datos.
 
-El registro incluye información como la fecha de ejecución, las fuentes utilizadas, el período analizado, el número de observaciones obtenidas y el estado de las extracciones.
+El registro incluye la fecha de ejecución, las fuentes utilizadas, los períodos disponibles, el número de observaciones, los valores faltantes, la comparación anual BCRP-WDI y el hash SHA-256 de la base procesada final.
 
 **Archivo:**
 
