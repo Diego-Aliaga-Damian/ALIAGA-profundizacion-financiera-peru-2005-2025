@@ -315,14 +315,14 @@ print("Archivo guardado en:")
 print(ARCHIVO_SBS_CSV)
 
 
-# Guardar también los errores, si existen
+# Guardar registro de errores de la ejecución actual
+ARCHIVO_ERRORES = os.path.join(
+    CARPETA_CRUDOS,
+    "errores_sbs_e_2024200481m.csv"
+)
+
 if errores_sbs:
     df_errores = pd.DataFrame(errores_sbs)
-
-    ARCHIVO_ERRORES = os.path.join(
-        CARPETA_CRUDOS,
-        "errores_sbs_e_2024200481m.csv"
-    )
 
     df_errores.to_csv(
         ARCHIVO_ERRORES,
@@ -332,3 +332,10 @@ if errores_sbs:
 
     print("Registro de errores guardado en:")
     print(ARCHIVO_ERRORES)
+
+else:
+    # Eliminar un registro antiguo si la ejecución actual no tuvo errores
+    if os.path.exists(ARCHIVO_ERRORES):
+        os.remove(ARCHIVO_ERRORES)
+
+    print("Errores de extracción SBS: 0")

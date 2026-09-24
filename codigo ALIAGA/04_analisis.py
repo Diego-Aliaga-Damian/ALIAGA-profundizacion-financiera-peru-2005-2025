@@ -360,6 +360,44 @@ modelo_ols = sm.OLS(
 
 print(modelo_ols.summary())
 
+# ------------------------------------------------------------
+# MODELO COMPLEMENTARIO: CRECIMIENTO TRIMESTRAL DEL PBI
+# ------------------------------------------------------------
+
+modelo_crecimiento = df_modelo[
+    [
+        "crecimiento_pbi",
+        "d_credito_pbi",
+        "inflacion_ipc",
+        "d_tipo_cambio"
+    ]
+].dropna()
+
+X_crecimiento = modelo_crecimiento[
+    [
+        "d_credito_pbi",
+        "inflacion_ipc",
+        "d_tipo_cambio"
+    ]
+]
+
+X_crecimiento = sm.add_constant(X_crecimiento)
+
+y_crecimiento = modelo_crecimiento["crecimiento_pbi"]
+
+modelo_crecimiento_hac = sm.OLS(
+    y_crecimiento,
+    X_crecimiento
+).fit(
+    cov_type="HAC",
+    cov_kwds={"maxlags": 4}
+)
+
+print(
+    "\n========== MODELO: CRECIMIENTO TRIMESTRAL DEL PBI =========="
+)
+
+print(modelo_crecimiento_hac.summary())
 # ----------------------------------------------------------
 # MODELO CON ERRORES ESTÁNDAR ROBUSTOS HAC
 # ----------------------------------------------------------
@@ -427,23 +465,28 @@ print(modelo_covid_hac.summary())
 resultados_finales = pd.DataFrame({
     "modelo": [
         "Primeras diferencias HAC",
-        "Primeras diferencias HAC + COVID"
+        "Primeras diferencias HAC + COVID",
+        "Crecimiento trimestral del PBI HAC"
     ],
-"coef_credito_pbi": [
-    modelo_hac.params.iloc[1] if hasattr(modelo_hac.params, "iloc") else modelo_hac.params[1],
-    modelo_covid_hac.params.iloc[1]
-],
-"p_valor_credito_pbi": [
-    modelo_hac.pvalues.iloc[1] if hasattr(modelo_hac.pvalues, "iloc") else modelo_hac.pvalues[1],
-    modelo_covid_hac.pvalues.iloc[1]
+    "coef_credito_pbi": [
+        modelo_hac.params[1],
+        modelo_covid_hac.params.iloc[1],
+        modelo_crecimiento_hac.params.iloc[1]
+    ],
+    "p_valor_credito_pbi": [
+    modelo_hac.pvalues[1],
+    modelo_covid_hac.pvalues.iloc[1],
+    modelo_crecimiento_hac.pvalues.iloc[1]
 ],
     "r_cuadrado": [
         modelo_hac.rsquared,
-        modelo_covid_hac.rsquared
+        modelo_covid_hac.rsquared,
+        modelo_crecimiento_hac.rsquared
     ],
     "observaciones": [
         int(modelo_hac.nobs),
-        int(modelo_covid_hac.nobs)
+        int(modelo_covid_hac.nobs),
+        int(modelo_crecimiento_hac.nobs)
     ]
 })
 

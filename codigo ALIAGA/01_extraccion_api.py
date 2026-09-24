@@ -4,9 +4,10 @@
 # Fecha de extracción: 20/09/2026
 
 import requests
+import pandas as pd
 from pathlib import Path
 import csv
-from datetime import datetime
+
 FECHA_INICIO = "2005-1"
 FECHA_CORTE = "2025-12"
 
@@ -131,55 +132,6 @@ print("Periodo inicial:", datos["periods"][0]["name"])
 print("Periodo final:", datos["periods"][-1]["name"])
 
 # Crear el registro de ejecución
-ARCHIVO_LOG = CARPETA_PROYECTO / "log_ejecucion.txt"
-
-with open(ARCHIVO_LOG, "w", encoding="utf-8") as log:
-    log.write("REGISTRO DE EJECUCIÓN - FINANZAS I\n")
-    log.write("=" * 50 + "\n")
-
-    log.write(
-        f"Fecha y hora: "
-        f"{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-    )
-
-    log.write("Estudiante: Diego Sebastian Aliaga Damián\n")
-    log.write("Matrícula: e_2024200481m\n")
-
-    log.write(
-        "Tema N.° 1: Profundización financiera y "
-        "crecimiento económico en el Perú, 2005-2025\n"
-    )
-
-    log.write("Fuente: BCRPData\n")
-    log.write(f"Estado HTTP: {respuesta.status_code}\n")
-
-    log.write(
-        f"Observaciones extraídas: {numero_periodos}\n"
-    )
-
-    log.write(
-        f"Variables sustantivas: "
-        f"{len(datos['config']['series'])}\n"
-    )
-
-    log.write(
-        f"Valores faltantes: {valores_faltantes}\n"
-    )
-
-    log.write(
-        f"Periodo inicial: {datos['periods'][0]['name']}\n"
-    )
-
-    log.write(
-        f"Periodo final: {datos['periods'][-1]['name']}\n"
-    )
-
-    log.write(f"FECHA_INICIO: {FECHA_INICIO}\n")
-    log.write(f"FECHA_CORTE: {FECHA_CORTE}\n")
-    log.write(f"Endpoint: {URL_API}\n")
-
-print("\nLog de ejecución guardado en:")
-print(ARCHIVO_LOG)
 
 # ----------------------------------------------------------
 # BANCO MUNDIAL - WORLD DEVELOPMENT INDICATORS (WDI)

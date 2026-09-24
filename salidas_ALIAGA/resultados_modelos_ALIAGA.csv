@@ -1,3 +1,4 @@
 ﻿modelo,coef_credito_pbi,p_valor_credito_pbi,r_cuadrado,observaciones
 Primeras diferencias HAC,-2.491068076177346,0.10443997491686757,0.17873793909592894,82
 Primeras diferencias HAC + COVID,-2.8920157074153012,0.1074126219830259,0.193064522329086,82
+Crecimiento trimestral del PBI HAC,-1.3420396543337267,0.1703637731761103,0.1116635863311215,82

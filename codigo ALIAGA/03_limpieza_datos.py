@@ -6,7 +6,7 @@
 import pandas as pd
 from pathlib import Path
 import hashlib
-
+from datetime import datetime
 # ----------------------------------------------------------
 # RUTAS DEL PROYECTO
 # ----------------------------------------------------------
@@ -233,14 +233,13 @@ df_trimestral = (
         as_index=False
     )
     .agg({
-        "credito_sector_privado": "mean",
+        "credito_sector_privado": "last",
         "pbi_desestacionalizado": "mean",
         "inflacion_ipc": "mean",
         "tipo_cambio": "mean",
-        "creditos_sbs_millones": "mean"
+        "creditos_sbs_millones": "last"
     })
 )
-
 print("\n--- BASE MENSUAL AGREGADA A TRIMESTRAL ---")
 print("Número de observaciones:", len(df_trimestral))
 print("Primera observación:")
@@ -363,6 +362,49 @@ print("Valores faltantes:", df_wdi.isna().sum().sum())
 print("Archivo:")
 print(ARCHIVO_WDI_PROCESADO)
 
+# ------------------------------------------------------------
+# COMPARACIÓN ANUAL BCRP - BANCO MUNDIAL WDI
+# ------------------------------------------------------------
+
+ARCHIVO_COMPARACION_BCRP_WDI = (
+    CARPETA_PROCESADOS /
+    "comparacion_bcrp_wdi_anual_e_2024200481m.csv"
+)
+
+# Promedio anual del ratio trimestral Crédito/PBI del BCRP
+df_bcrp_anual = (
+    df_ratio
+    .groupby("anio", as_index=False)
+    .agg({
+        "credito_privado_pct_pbi_bcrp": "mean"
+    })
+)
+
+# Integrar con WDI mediante el año como clave común
+df_comparacion_wdi = pd.merge(
+    df_bcrp_anual,
+    df_wdi,
+    on="anio",
+    how="inner"
+)
+
+df_comparacion_wdi.to_csv(
+    ARCHIVO_COMPARACION_BCRP_WDI,
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print("\n--- COMPARACIÓN ANUAL BCRP - WDI ---")
+print("Observaciones:", len(df_comparacion_wdi))
+print("Primer año:", df_comparacion_wdi["anio"].iloc[0])
+print("Último año:", df_comparacion_wdi["anio"].iloc[-1])
+print(
+    "Valores faltantes:",
+    df_comparacion_wdi.isna().sum().sum()
+)
+print("Columnas:", df_comparacion_wdi.columns.tolist())
+print("Archivo:")
+print(ARCHIVO_COMPARACION_BCRP_WDI)
 # ----------------------------------------------------------
 # DICCIONARIO DE VARIABLES
 # ----------------------------------------------------------
@@ -372,10 +414,10 @@ diccionario = pd.DataFrame([
         "variable": "credito_sector_privado",
         "definicion": "Crédito total del sistema financiero al sector privado",
         "unidad": "Millones de soles",
-        "frecuencia": "Trimestral (promedio de datos mensuales)",
+        "frecuencia": "Trimestral (último mes del trimestre)",
         "fuente": "BCRPData",
         "codigo_serie": "PN00518MM",
-        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PN00518MM-PN01773AM-PN01273PM-PN01207PM/json/2005-1/2025-12/esp"
     },
     {
         "variable": "pbi_desestacionalizado",
@@ -384,7 +426,7 @@ diccionario = pd.DataFrame([
         "frecuencia": "Trimestral (promedio de datos mensuales)",
         "fuente": "BCRPData",
         "codigo_serie": "PN01773AM",
-        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PN00518MM-PN01773AM-PN01273PM-PN01207PM/json/2005-1/2025-12/esp"
     },
     {
         "variable": "inflacion_ipc",
@@ -393,7 +435,7 @@ diccionario = pd.DataFrame([
         "frecuencia": "Trimestral (promedio de datos mensuales)",
         "fuente": "BCRPData",
         "codigo_serie": "PN01273PM",
-        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PN00518MM-PN01773AM-PN01273PM-PN01207PM/json/2005-1/2025-12/esp"
     },
     {
         "variable": "tipo_cambio",
@@ -402,16 +444,16 @@ diccionario = pd.DataFrame([
         "frecuencia": "Trimestral (promedio de datos mensuales)",
         "fuente": "BCRPData",
         "codigo_serie": "PN01207PM",
-        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PN00518MM-PN01773AM-PN01273PM-PN01207PM/json/2005-1/2025-12/esp"
     },
     {
         "variable": "creditos_sbs_millones",
         "definicion": "Créditos directos de la banca múltiple",
         "unidad": "Millones de soles",
-        "frecuencia": "Trimestral (promedio de datos mensuales)",
+        "frecuencia": "Trimestral (último mes del trimestre)",
         "fuente": "SBS",
         "codigo_serie": "B-2332",
-        "endpoint": "https://intranet2.sbs.gob.pe/estadistica/financiera/"
+        "endpoint": "https://intranet2.sbs.gob.pe/estadistica/financiera/{anio}/{mes}/{codigo}-{prefijo}{anio}.XLS"
     },
     {
         "variable": "credito_privado_pct_pbi_bcrp",
@@ -420,7 +462,7 @@ diccionario = pd.DataFrame([
         "frecuencia": "Trimestral",
         "fuente": "BCRPData",
         "codigo_serie": "PN03500MQ",
-        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+        "endpoint": "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PN03500MQ/json/2005-1/2025-4/esp"
     },
     {
         "variable": "credito_privado_pct_pbi_wdi",
@@ -429,7 +471,7 @@ diccionario = pd.DataFrame([
         "frecuencia": "Anual",
         "fuente": "Banco Mundial - WDI",
         "codigo_serie": "FS.AST.PRVT.GD.ZS",
-        "endpoint": "https://api.worldbank.org/v2/"
+        "endpoint": "https://api.worldbank.org/v2/country/PER/indicator/FS.AST.PRVT.GD.ZS?format=json&date=2005:2025&per_page=100"
     }
 ])
 
@@ -489,3 +531,122 @@ print("Archivo:", ARCHIVO_TRIMESTRAL_PROCESADO.name)
 print("SHA-256:", HASH_BASE_FINAL)
 print("Hash guardado en:")
 print(ARCHIVO_HASH)
+
+# ----------------------------------------------------------
+# REGISTRO FINAL DE EJECUCIÓN
+# ----------------------------------------------------------
+
+ARCHIVO_LOG = CARPETA_PROYECTO / "log_ejecucion.txt"
+
+with open(
+    ARCHIVO_LOG,
+    "w",
+    encoding="utf-8"
+) as log:
+
+    log.write("REGISTRO DE EJECUCIÓN - FINANZAS I\n")
+    log.write("=" * 60 + "\n\n")
+
+    log.write(
+        f"Fecha y hora: "
+        f"{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+    )
+    log.write("Estudiante: Diego Sebastian Aliaga Damián\n")
+    log.write("Matrícula: e_2024200481m\n")
+    log.write(
+        "Tema N.° 1: Profundización financiera y "
+        "crecimiento económico en el Perú, 2005-2025\n\n"
+    )
+
+    log.write("1. DATOS BCRP MENSUALES\n")
+    log.write("-" * 40 + "\n")
+    log.write(f"Observaciones: {len(df_bcrp)}\n")
+    log.write("Periodo: 2005-01 a 2025-12\n")
+    log.write(
+        f"Valores faltantes: "
+        f"{df_bcrp.isna().sum().sum()}\n\n"
+    )
+
+    log.write("2. DATOS SBS\n")
+    log.write("-" * 40 + "\n")
+    log.write(f"Observaciones: {len(df_sbs)}\n")
+    log.write("Periodo: 2005-01 a 2025-12\n")
+    log.write(
+        f"Valores faltantes: "
+        f"{df_sbs.isna().sum().sum()}\n\n"
+    )
+
+    log.write("3. BANCO MUNDIAL WDI\n")
+    log.write("-" * 40 + "\n")
+    log.write(
+        "Indicador: FS.AST.PRVT.GD.ZS\n"
+    )
+    log.write(f"Observaciones: {len(df_wdi)}\n")
+    log.write(
+        f"Valores faltantes: "
+        f"{df_wdi.isna().sum().sum()}\n\n"
+    )
+
+    log.write("4. RATIO CRÉDITO / PBI BCRP\n")
+    log.write("-" * 40 + "\n")
+    log.write(
+        f"Observaciones: {len(df_ratio)}\n"
+    )
+    log.write("Frecuencia: Trimestral\n")
+    log.write("Periodo: 2005T1 a 2025T4\n")
+    log.write(
+        f"Valores faltantes: "
+        f"{df_ratio.isna().sum().sum()}\n\n"
+    )
+
+    log.write("5. BASE PROCESADA FINAL\n")
+    log.write("-" * 40 + "\n")
+    log.write(
+        f"Observaciones: {len(df_final)}\n"
+    )
+    log.write(
+        f"Columnas: {len(df_final.columns)}\n"
+    )
+    log.write(
+        f"Valores faltantes: "
+        f"{df_final.isna().sum().sum()}\n"
+    )
+    log.write(
+        f"Duplicados: "
+        f"{df_final['periodo_trimestral'].duplicated().sum()}\n"
+    )
+    log.write("Periodo: 2005T1 a 2025T4\n\n")
+
+    log.write("6. DICCIONARIO DE VARIABLES\n")
+    log.write("-" * 40 + "\n")
+    log.write(
+        f"Variables documentadas: {len(diccionario)}\n\n"
+    )
+    log.write("7. COMPARACIÓN ANUAL BCRP - WDI\n")
+    log.write("-" * 40 + "\n")
+    log.write(
+        f"Observaciones: {len(df_comparacion_wdi)}\n"
+    )
+    log.write(
+        f"Primer año: {df_comparacion_wdi['anio'].iloc[0]}\n"
+    )
+    log.write(
+        f"Último año: {df_comparacion_wdi['anio'].iloc[-1]}\n"
+    )
+    log.write(
+        "Valores faltantes: "
+        f"{df_comparacion_wdi.isna().sum().sum()}\n"
+    )
+    log.write(
+        f"Archivo: {ARCHIVO_COMPARACION_BCRP_WDI.name}\n\n"
+    )
+    log.write("8. INTEGRIDAD DE LA BASE FINAL\n")
+    log.write("-" * 40 + "\n")
+    log.write(
+        f"Archivo: {ARCHIVO_TRIMESTRAL_PROCESADO.name}\n"
+    )
+    log.write(f"SHA-256: {HASH_BASE_FINAL}\n")
+
+print("\n--- REGISTRO FINAL DE EJECUCIÓN ---")
+print("Log guardado en:")
+print(ARCHIVO_LOG)
