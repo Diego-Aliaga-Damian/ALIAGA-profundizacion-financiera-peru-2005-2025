@@ -191,7 +191,7 @@ if registros_wdi:
 
     # Guardar datos crudos del Banco Mundial
 ARCHIVO_WDI = (
-    Path("datos_crudos_ALIAGA")
+    CARPETA_CRUDOS
     / "datos_wdi_e_2024200481m.csv"
 )
 
@@ -262,7 +262,7 @@ for periodo in datos_ratio["periods"]:
         })
 
 ARCHIVO_RATIO_BCRP = (
-    Path("datos_crudos_ALIAGA")
+    CARPETA_CRUDOS
     / "ratio_credito_pbi_bcrp_e_2024200481m.csv"
 )
 

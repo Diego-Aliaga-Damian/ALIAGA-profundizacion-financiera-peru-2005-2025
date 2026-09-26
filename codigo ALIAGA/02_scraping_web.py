@@ -7,7 +7,7 @@ import os
 import requests
 import pandas as pd
 from io import BytesIO
-
+from pathlib import Path
 # ----------------------------------------------------------
 # CONFIGURACIÓN
 # ----------------------------------------------------------
@@ -15,10 +15,10 @@ from io import BytesIO
 FECHA_INICIO = "2005-01"
 FECHA_CORTE = "2025-12"
 
-CARPETA_CRUDOS = "datos_crudos_ALIAGA"
+CARPETA_PROYECTO = Path(__file__).resolve().parent.parent
+CARPETA_CRUDOS = CARPETA_PROYECTO / "datos_crudos_ALIAGA"
 
-os.makedirs(CARPETA_CRUDOS, exist_ok=True)
-
+CARPETA_CRUDOS.mkdir(parents=True, exist_ok=True)
 # ----------------------------------------------------------
 # CONFIGURACIÓN DE LA FUENTE SBS
 # ----------------------------------------------------------
